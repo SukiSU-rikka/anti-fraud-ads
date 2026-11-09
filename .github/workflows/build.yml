@@ -1,0 +1,26 @@
+name: 构建模块
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: 编译 Zygisk 库并打包
+        run: bash zygisk/build.sh
+
+      # 下载下来的 artifact 解压一次就是可直接刷入的模块 zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: anti_fraud_ads
+          path: out/*.zip
+          compression-level: 0

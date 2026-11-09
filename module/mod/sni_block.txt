@@ -1,0 +1,27 @@
+# 拦截域名（按 TLS SNI / HTTP Host 子串匹配，写主域名即可覆盖子域名；同时自动生成 AdGuard DNS 规则）
+gjfzpt.cn
+fanzha.org.cn
+hicore-auth.com
+virusinfo-cloudscan-cn.heytapmobi.com
+app-installer-cn.heytapmobi.com
+obus-cn.dc.heytapmobi.com
+obus-dctech-cn.heytapmobi.com
+
+# ===== 广告 SDK（稀饭动漫 Next 开屏；SDK 用 HTTPDNS 绕过 DNS 时靠这里拦）=====
+# 同时会自动生成对应的 AdGuard DNS 规则
+pangolin-sdk-toutiao.com
+pglstatp-toutiao.com
+anythinktech.com
+sigmob.cn
+adkwai.com
+statisticslinks.com
+adwangmai.com
+1rtb.net
+1rtb.com
+buluken.com
+adbiding.cn
+etoolads.cn
+8ziben.com
+zhangyuyidong.cn
+bytesfield.com
+bytesfield-b.com

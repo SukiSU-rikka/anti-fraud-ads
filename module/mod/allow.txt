@@ -1,0 +1,6 @@
+# 放行名单：这些域名永远不会被 SNI 拦截，并在 AdGuard 里强制放行
+# 稀饭动漫 Next 本体 API / 后端（广告配置也从这里下发，拦了 App 直接不能用）
+xifanacg.com
+xifan.moe
+moedot.net
+supabase.co

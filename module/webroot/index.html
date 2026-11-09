@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>反诈屏蔽 + 去广告</title>
+<style>
+:root {
+  --ink: #2f2547; --ink-2: #6c6383; --line: #e6e0f0;
+  --bg: #fbf9fe; --sheet: #ffffff; --wash: #eee8f7; --petal: #f6dce8;
+  --lav: #6e5a9e; --lav-ink: #ffffff; --ok: #3e9b7f; --warn: #c94b6b; --amber: #b9852a;
+  --nav-h: 64px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #ece6f7; --ink-2: #a79fbd; --line: #3a3150;
+    --bg: #17131f; --sheet: #211b2c; --wash: #2b2339; --petal: #3a2533;
+    --lav: #b9a5e8; --lav-ink: #1d1729; --ok: #6cc7a8; --warn: #ef8aa2; --amber: #e2b45e;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+body {
+  font-family: "OPPO Sans", "OPPOSans", "HarmonyOS Sans SC", "PingFang SC", "Noto Sans CJK SC", system-ui, sans-serif;
+  font-size: 15px; line-height: 1.55;
+}
+button, input, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--lav); outline-offset: 2px; }
+
+main {
+  max-width: 640px; margin: 0 auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) 16px calc(env(safe-area-inset-bottom, 0px) + var(--nav-h) + 92px);
+}
+.page { display: none; }
+.page.on { display: block; animation: in .18s ease-out; }
+@keyframes in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.page-title { font-size: 22px; font-weight: 700; margin: 4px 4px 2px; }
+.page-sub { font-size: 13px; color: var(--ink-2); margin: 0 4px 6px; }
+
+/* ---------- 概览 ---------- */
+.verdict small { display: block; color: var(--ink-2); font-size: 13px; margin: 0 4px 6px; }
+.verdict h1 { font-size: 25px; line-height: 1.32; font-weight: 700; margin: 0 4px; }
+.lamps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+.lamp {
+  border: 0; text-align: left; border-radius: 18px; padding: 12px 12px 11px; background: var(--wash);
+  display: flex; flex-direction: column; gap: 2px; cursor: pointer; min-width: 0;
+}
+.lamp i { width: 10px; height: 10px; border-radius: 50%; background: var(--ink-2); margin-bottom: 6px; }
+.lamp b { font-size: 14.5px; }
+.lamp span { font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.lamp.on { background: color-mix(in srgb, var(--ok) 11%, var(--sheet)); }
+.lamp.on i { background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 22%, transparent); }
+.lamp.bad { background: var(--petal); }
+.lamp.bad i { background: var(--warn); box-shadow: 0 0 0 4px color-mix(in srgb, var(--warn) 22%, transparent); }
+.lamp.idle i { background: var(--amber); }
+
+.actions { display: flex; gap: 8px; margin: 16px 0 4px; flex-wrap: wrap; }
+.btn {
+  border: 0; border-radius: 999px; padding: 10px 16px; background: var(--wash); cursor: pointer;
+  font-weight: 600; font-size: 14px; white-space: nowrap;
+}
+.btn.primary { background: var(--lav); color: var(--lav-ink); }
+.btn.danger { color: var(--warn); }
+.btn.small { padding: 7px 12px; font-size: 13px; }
+.btn:disabled { opacity: .5; }
+.btn:active { transform: scale(.97); }
+
+/* ---------- 分组 ---------- */
+h2 { font-size: 13.5px; font-weight: 600; color: var(--ink-2); margin: 26px 4px 8px; }
+.sheet { background: var(--sheet); border: 1px solid var(--line); border-radius: 20px; overflow: hidden; }
+.row { display: flex; align-items: center; gap: 12px; padding: 13px 16px; }
+.sheet > * + * { border-top: 1px solid var(--line); }
+.row .txt { flex: 1; min-width: 0; }
+.row .txt b { display: block; font-weight: 600; font-size: 15px; }
+.row .txt span { display: block; font-size: 12.5px; color: var(--ink-2); line-height: 1.45; }
+.sub { padding: 12px 16px 14px; }
+.hint { font-size: 12.5px; color: var(--ink-2); margin: 8px 4px 0; }
+.sub .hint { margin: 8px 0 0; }
+
+.sw { position: relative; width: 50px; height: 30px; flex: none; }
+.sw input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+.sw u { position: absolute; inset: 0; border-radius: 999px; background: var(--line); transition: background .18s; }
+.sw u::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(40, 20, 70, .25); transition: transform .18s;
+}
+.sw input:checked + u { background: var(--lav); }
+.sw input:checked + u::after { transform: translateX(20px); }
+
+.tag { font-size: 12px; padding: 2px 9px; border-radius: 999px; background: var(--wash); color: var(--ink-2); white-space: nowrap; }
+.tag.ok { background: color-mix(in srgb, var(--ok) 16%, var(--sheet)); color: var(--ok); }
+.tag.warn { background: var(--petal); color: var(--warn); }
+.tag.amber { background: color-mix(in srgb, var(--amber) 16%, var(--sheet)); color: var(--amber); }
+.pkg { font-size: 13.5px; word-break: break-all; }
+.list:empty { display: none; }
+.list > .row + .row { border-top: 1px solid var(--line); }
+
+.field { display: flex; gap: 8px; padding: 14px 16px; }
+input[type=text], input[type=password], input[type=search], textarea {
+  flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--bg); border-radius: 14px;
+  padding: 10px 12px; font-size: 14px;
+}
+textarea { width: 100%; min-height: 96px; resize: vertical; font-size: 13.5px; line-height: 1.5; }
+.result { padding: 0 16px 14px; font-size: 14px; border-top: 0 !important; }
+.result.ok { color: var(--ok); } .result.warn { color: var(--warn); }
+.field.end { align-items: center; flex-wrap: wrap; }
+.field.end .result { flex: 1; padding: 0; font-size: 13px; color: var(--ink-2); min-width: 40%; }
+.field.end .result.ok { color: var(--ok); } .field.end .result.warn { color: var(--warn); }
+.sub + .field.end { border-top: 0; padding-top: 0; }
+
+details.fold summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 12px; padding: 13px 16px; }
+details.fold summary::-webkit-details-marker { display: none; }
+details.fold summary::after { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--ink-2); border-bottom: 2px solid var(--ink-2); transform: rotate(45deg); transition: transform .18s; margin: 0 6px 4px 0; }
+details.fold[open] summary::after { transform: rotate(-135deg); margin-bottom: -2px; }
+details.fold summary .txt b { color: var(--lav); font-size: 14px; }
+details.fold p { margin: 0 16px 12px; font-size: 12.5px; color: var(--ink-2); word-break: break-all; }
+details.fold p b { display: block; color: var(--ink); font-size: 13.5px; }
+details.fold .sub { padding-top: 0; }
+
+.tabs { display: flex; gap: 6px; padding: 12px 12px 0; overflow-x: auto; }
+.tabs button { border: 0; background: none; padding: 6px 12px; border-radius: 999px; font-size: 13.5px; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+.tabs button.on { background: var(--wash); color: var(--ink); font-weight: 600; }
+.tabs + .sub, .tabs + pre { border-top: 0; }
+pre {
+  margin: 10px 12px 12px; padding: 12px; background: var(--bg); border-radius: 14px; max-height: 340px; overflow: auto;
+  font-size: 11.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; font-family: ui-monospace, "Roboto Mono", monospace;
+}
+.sheet > pre { border-top: 0; }
+
+/* ---------- 开屏 ---------- */
+.banner { border-radius: 18px; padding: 14px 16px; margin: 14px 0 0; font-size: 13.5px; line-height: 1.5; background: var(--wash); }
+.banner b { display: block; font-size: 15px; margin-bottom: 2px; }
+.banner.ok { background: color-mix(in srgb, var(--ok) 11%, var(--sheet)); }
+.banner.ok b { color: var(--ok); }
+.banner.bad { background: var(--petal); }
+.banner.bad b { color: var(--warn); }
+.row.stack { flex-wrap: wrap; row-gap: 10px; }
+.row.stack .txt { flex-basis: 100%; }
+.row.stack .seg { flex: 1; }
+.row.stack .seg button { flex: 1; }
+.seg { display: flex; background: var(--wash); border-radius: 999px; padding: 3px; }
+.seg button { border: 0; background: none; border-radius: 999px; padding: 5px 11px; font-size: 13px; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+.seg button.on { background: var(--sheet); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(40, 20, 70, .14); }
+.apphead { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+.apphead input { padding: 9px 12px; }
+.chips { display: flex; gap: 6px; }
+.chips button { border: 1px solid var(--line); background: none; border-radius: 999px; padding: 4px 12px; font-size: 13px; color: var(--ink-2); cursor: pointer; }
+.chips button.on { border-color: var(--lav); color: var(--lav); font-weight: 600; }
+.chips button.add { margin-left: auto; border: 0; background: var(--lav); color: var(--lav-ink); font-weight: 600; }
+.chips button.add:disabled { background: var(--wash); color: var(--ink-2); }
+.app { display: flex; align-items: center; gap: 12px; padding: 10px 14px; cursor: pointer; }
+.app + .app, .app + .more-apps { border-top: 1px solid var(--line); }
+button.row.link { width: 100%; border: 0; border-top: 1px solid var(--line); background: none; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+button.row.link .txt b { color: var(--lav); }
+.chev { width: 8px; height: 8px; border-right: 2px solid var(--ink-2); border-top: 2px solid var(--ink-2); transform: rotate(45deg); margin-right: 4px; flex: none; }
+.app .ic { width: 38px; height: 38px; border-radius: 11px; flex: none; background: var(--wash); display: grid; place-items: center; font-weight: 700; color: var(--lav); overflow: hidden; font-size: 16px; }
+.app .ic img { width: 100%; height: 100%; object-fit: cover; }
+.app .txt { flex: 1; min-width: 0; }
+.app .txt b { display: block; font-size: 14.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app .txt span { display: block; font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.empty { padding: 26px 16px; text-align: center; color: var(--ink-2); font-size: 13.5px; }
+.more-apps { display: block; width: 100%; border: 0; background: none; padding: 13px; color: var(--lav); font-weight: 600; cursor: pointer; }
+
+/* ---------- 统计 / 步进器 ---------- */
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat { background: var(--sheet); border: 1px solid var(--line); border-radius: 18px; padding: 12px 12px 10px; min-width: 0; }
+.stat b { display: block; font-size: 22px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.stat span { display: block; font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.step { display: flex; align-items: center; background: var(--wash); border-radius: 999px; padding: 3px; flex: none; }
+.step button { width: 34px; height: 34px; border: 0; border-radius: 50%; background: var(--sheet); color: var(--lav); font-size: 20px; line-height: 1; cursor: pointer; box-shadow: 0 1px 2px rgba(40, 20, 70, .12); }
+.step button:active { transform: scale(.92); }
+.step label { display: flex; align-items: baseline; gap: 2px; padding: 0 6px; font-size: 13px; color: var(--ink-2); }
+.step input { width: 2.6ch; border: 0; background: none; text-align: center; font-size: 17px; font-weight: 700; color: var(--ink); padding: 0; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
+.step input::-webkit-inner-spin-button, .step input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.row.off .txt, .row.off .step { opacity: .45; }
+.row.off .step { pointer-events: none; }
+.rec { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--amber) 16%, var(--sheet)); color: var(--amber); margin-left: 6px; font-weight: 600; vertical-align: 1px; }
+.syntax { margin: 0; padding: 0 16px 14px; font-size: 12.5px; color: var(--ink-2); line-height: 1.7; }
+.syntax code { font-family: ui-monospace, "Roboto Mono", monospace; font-size: 12px; background: var(--wash); color: var(--ink); padding: 1px 6px; border-radius: 6px; }
+.syntax dt { color: var(--ink); font-weight: 600; margin-top: 6px; }
+.syntax dd { margin: 0 0 0 0; }
+
+/* ---------- 底部 ---------- */
+nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  background: color-mix(in srgb, var(--sheet) 92%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+nav div { max-width: 640px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); height: var(--nav-h); }
+nav button { position: relative; border: 0; background: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--ink-2); font-size: 11.5px; }
+nav svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+nav button.on { color: var(--lav); font-weight: 600; }
+nav button.on svg { stroke-width: 2.2; }
+nav button.dot::after { content: ""; position: absolute; top: 11px; left: calc(50% + 9px); width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
+
+.savebar {
+  position: fixed; left: 50%; z-index: 6;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--nav-h) + 12px); transform: translate(-50%, 30px); opacity: 0; pointer-events: none;
+  width: min(600px, calc(100% - 28px)); background: var(--ink); color: var(--bg); border-radius: 22px;
+  padding: 9px 9px 9px 18px; display: flex; align-items: center; gap: 6px; transition: transform .22s ease, opacity .22s;
+  box-shadow: 0 8px 24px rgba(40, 20, 70, .28);
+}
+.savebar.show { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+.savebar span { flex: 1; font-size: 14px; }
+.savebar .btn { background: var(--lav); color: var(--lav-ink); }
+.savebar .btn.ghost { background: transparent; color: var(--bg); opacity: .8; padding: 10px 12px; }
+@media (prefers-color-scheme: dark) { .savebar .btn:not(.ghost) { background: var(--lav-ink); color: var(--lav); } }
+.toast {
+  position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 14px); transform: translateX(-50%); z-index: 7;
+  background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 999px; font-size: 13.5px;
+  opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 90%; text-align: center;
+}
+.toast.show { opacity: 1; }
+.busy { opacity: .55; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<main>
+
+<!-- ======================= 概览 ======================= -->
+<section class="page on" id="p-home">
+  <div class="verdict" aria-live="polite">
+    <small id="ver">读取中…</small>
+    <h1 id="headline">正在检查拦截状态</h1>
+  </div>
+  <div class="lamps">
+    <button class="lamp" id="lamp-ad" data-go="block"><i></i><b>去广告</b><span id="lamp-ad-t">检查中</span></button>
+    <button class="lamp" id="lamp-af" data-go="block"><i></i><b>反诈</b><span id="lamp-af-t">检查中</span></button>
+    <button class="lamp" id="lamp-sk" data-go="skip"><i></i><b>开屏跳过</b><span id="lamp-sk-t">检查中</span></button>
+  </div>
+  <div class="actions">
+    <button class="btn primary" id="b-open">打开 AdGuard 后台</button>
+    <button class="btn" id="b-pause">暂停全部</button>
+    <button class="btn" id="b-refresh">刷新</button>
+  </div>
+
+  <h2>开机以来</h2>
+  <div class="stats">
+    <div class="stat"><b id="n-sni">—</b><span>拦截连接</span></div>
+    <div class="stat"><b id="n-skip">—</b><span>跳过开屏</span></div>
+    <div class="stat"><b id="n-pop">—</b><span>关闭弹窗</span></div>
+  </div>
+
+  <h2>拦截测试</h2>
+  <div class="sheet">
+    <div class="field">
+      <input type="text" id="t-domain" value="fzapph5.gjfzpt.cn" aria-label="要测试的域名" autocapitalize="off" spellcheck="false">
+      <button class="btn primary" id="b-test">测试</button>
+    </div>
+    <div class="result" id="t-result">用默认的国家反诈中心网址测试，显示「已拦截」就说明生效了。</div>
+  </div>
+
+  <h2>运行情况</h2>
+  <div class="sheet">
+    <div class="row"><div class="txt"><b>SNI 直接拦截</b><span id="sni-info">—</span></div></div>
+    <div class="row"><div class="txt"><b>系统广告组件</b><span id="sys-info">—</span></div></div>
+    <div class="row"><div class="txt"><b>规则总数</b><span id="rule-info">—</span></div></div>
+  </div>
+</section>
+
+<!-- ======================= 拦截 ======================= -->
+<section class="page" id="p-block">
+  <div class="page-title">拦截设置</div>
+  <p class="page-sub">改完点底部的「保存并应用」，几秒内生效，不用重启。</p>
+
+  <h2>去广告（AdGuard Home）</h2>
+  <div class="sheet">
+    <label class="row"><div class="txt"><b>启用 AdGuard Home</b><span>秋风广告规则 + 本模块规则，每 24 小时自动更新</span></div>
+      <span class="sw"><input type="checkbox" data-key="ENABLE_AGH"><u></u></span></label>
+    <label class="row"><div class="txt"><b>拦截加密 DNS（DoT）</b><span>防止系统或应用绕过 AdGuard</span></div>
+      <span class="sw"><input type="checkbox" data-key="AGH_BLOCK_DOT"><u></u></span></label>
+    <label class="row"><div class="txt"><b>拒绝 IPv6 DNS</b><span>让 DNS 都回落到 IPv4，确保经过 AdGuard</span></div>
+      <span class="sw"><input type="checkbox" data-key="AGH_BLOCK_IPV6_DNS"><u></u></span></label>
+    <label class="row"><div class="txt"><b>拦截 QUIC</b><span>让应用改用 TCP，按域名拦截才看得到地址；视频加载可能稍慢</span></div>
+      <span class="sw"><input type="checkbox" data-key="BLOCK_QUIC"><u></u></span></label>
+  </div>
+
+  <h2>反诈与广告 SDK</h2>
+  <div class="sheet">
+    <label class="row"><div class="txt"><b>按域名直接拦截（SNI）</b><span>连接名单里的网址时直接断开，不依赖 DNS，开 VPN 也有效</span></div>
+      <span class="sw"><input type="checkbox" data-key="BLOCK_SNI"><u></u></span></label>
+    <label class="row"><div class="txt"><b>屏蔽反诈服务器 IP</b><span>内置 212 个 IP</span></div>
+      <span class="sw"><input type="checkbox" data-key="BLOCK_IP_LIST"><u></u></span></label>
+    <label class="row"><div class="txt"><b>屏蔽 ColorOS 云查杀 IP</b><span>可能是共享节点，某些服务连不上时先关掉这项</span></div>
+      <span class="sw"><input type="checkbox" data-key="BLOCK_COLOROS_IP"><u></u></span></label>
+    <label class="row"><div class="txt"><b>屏蔽腾讯 HTTPDNS</b><span>防止应用绕过系统 DNS</span></div>
+      <span class="sw"><input type="checkbox" data-key="BLOCK_DNSPOD"><u></u></span></label>
+  </div>
+
+  <h2>断网的应用</h2>
+  <div class="sheet">
+    <div class="list" id="pkg-list"></div>
+    <details class="fold"><summary><div class="txt"><b>编辑名单</b></div></summary>
+      <div class="sub"><textarea id="ta-pkgs" spellcheck="false" aria-label="断网的应用包名"></textarea>
+      <p class="hint">一行一个包名。共享系统 UID 的应用无法单独断网，会自动跳过。</p></div>
+    </details>
+  </div>
+
+  <h2>系统广告组件</h2>
+  <div class="sheet">
+    <label class="row"><div class="txt"><b>挂起快应用</b><span id="sus-quick">广告里一点就跳进去的免安装小程序；负一屏快递卡片不受影响</span></div>
+      <span class="sw"><input type="checkbox" data-key="SUSPEND_QUICKAPP"><u></u></span></label>
+    <label class="row"><div class="txt"><b>挂起锁屏杂志</b><span id="sus-pic">锁屏上的推荐图文；打开后锁屏杂志壁纸也会停用</span></div>
+      <span class="sw"><input type="checkbox" data-key="SUSPEND_PICTORIAL"><u></u></span></label>
+    <label class="row"><div class="txt"><b>锁定广告缓存</b><span>开屏广告等缓存目录，卸载模块时自动还原</span></div>
+      <span class="sw"><input type="checkbox" data-key="ADS_LOCK"><u></u></span></label>
+  </div>
+
+  <h2>冻结的应用</h2>
+  <div class="sheet">
+    <div class="list" id="frz-list"></div>
+    <details class="fold"><summary><div class="txt"><b>编辑名单</b></div></summary>
+      <div class="sub"><textarea id="ta-frz" spellcheck="false" aria-label="冻结的应用包名"></textarea>
+      <p class="hint">从名单删掉的包会在保存后自动解冻。安装器、应用商店、负一屏这类冻结后会出问题的包，写进来也不会处理。</p></div>
+    </details>
+  </div>
+</section>
+
+<!-- ======================= 开屏 ======================= -->
+<section class="page" id="p-skip">
+  <div class="page-title">开屏广告自动跳过</div>
+  <p class="page-sub">只在选中的应用里工作：应用打开后的几秒内，看到「跳过」就自动点掉，顺手关掉启动时的弹窗。</p>
+  <div class="banner" id="sk-banner"><b>检查中</b></div>
+
+  <h2>设置</h2>
+  <div class="sheet">
+    <label class="row"><div class="txt"><b>启用自动跳过</b><span>关掉后所有应用都不处理，名单保留</span></div>
+      <span class="sw"><input type="checkbox" data-key="ENABLE_SKIP"><u></u></span></label>
+    <div class="row" id="row-skipw"><div class="txt"><b>寻找时长</b><span>第一个页面出现后，多少秒内找「跳过」</span></div>
+      <div class="step" data-num="SKIP_WINDOW" data-min="2" data-max="30" data-def="8"><button aria-label="减少">−</button><label><input type="number" inputmode="numeric" aria-label="秒数">秒</label><button aria-label="增加">+</button></div></div>
+  </div>
+
+  <h2>启动弹窗</h2>
+  <div class="sheet">
+    <label class="row"><div class="txt"><b>关闭启动弹窗</b><span>开屏之后继续检查，点掉应用自己弹的通知权限、活动推广、更新提示。隐私协议、支付、登录类弹窗不会碰</span></div>
+      <span class="sw"><input type="checkbox" data-key="POPUP_DISMISS"><u></u></span></label>
+    <div class="row" id="row-popw"><div class="txt"><b>再多检查</b><span>跳过开屏后，继续找弹窗的秒数</span></div>
+      <div class="step" data-num="POPUP_WINDOW" data-min="1" data-max="60" data-def="7"><button aria-label="减少">−</button><label><input type="number" inputmode="numeric" aria-label="秒数">秒</label><button aria-label="增加">+</button></div></div>
+    <button class="row link" data-go="rules" data-rt-go="popup"><div class="txt"><b>弹窗规则</b><span id="pop-rules-info">自定义要点、不要点的按钮，可导入新规则，保存即生效</span></div><i class="chev"></i></button>
+  </div>
+
+  <h2 id="app-h2">应用</h2>
+  <div class="sheet">
+    <div class="apphead">
+      <input type="search" id="app-q" placeholder="搜索应用名或包名" autocapitalize="off" spellcheck="false" aria-label="搜索应用">
+      <div class="chips"><button class="on" data-f="all">全部</button><button data-f="on">已选</button><button data-f="rec">推荐</button><button class="add" id="b-common">一键添加推荐</button></div>
+    </div>
+    <div id="app-list"><div class="empty">读取应用列表…</div></div>
+  </div>
+  <p class="hint">开关立即保存。下次冷启动该应用时生效，先在最近任务里把它划掉再打开。</p>
+
+  <h2>最近跳过记录</h2>
+  <div class="sheet">
+    <pre id="sk-log">打开过选中的应用后，这里会显示点掉了什么。</pre>
+    <div class="field end"><span class="result">记录来自系统日志，重启后清空</span><button class="btn small" id="b-sklog">刷新</button></div>
+  </div>
+</section>
+
+<!-- ======================= 规则 ======================= -->
+<section class="page" id="p-rules">
+  <div class="page-title">规则</div>
+  <p class="page-sub" id="st-total">—</p>
+
+  <div class="sheet">
+    <div class="row"><div class="txt"><b>来源</b><span id="st-src">—</span></div></div>
+    <details class="fold"><summary><div class="txt"><b>查看内置名单</b></div></summary>
+      <p><b>拦截域名</b><span id="st-builtin"></span></p>
+      <p><b>放行（永不拦截）</b><span id="st-allow"></span></p>
+    </details>
+  </div>
+
+  <h2>导入规则</h2>
+  <div class="sheet">
+    <div class="sub"><textarea id="ta-import" spellcheck="false" placeholder="把规则整段粘贴进来，会自动分类：&#10;纯域名 → 拦截域名（同时生成 DNS 规则）&#10;||域名^ → DNS 规则&#10;IP 或网段 → IP&#10;@@||域名^ → 放行&#10;拒绝: 残忍离开 → 弹窗规则"></textarea></div>
+    <div class="field end"><span class="result" id="imp-result"></span><button class="btn primary" id="b-import">导入并生效</button></div>
+  </div>
+
+  <h2>我的规则</h2>
+  <div class="sheet">
+    <div class="tabs" role="tablist" id="rule-tabs">
+      <button class="on" data-rt="sni">拦截域名</button>
+      <button data-rt="dns">DNS 规则</button>
+      <button data-rt="ip">IP</button>
+      <button data-rt="allow">放行</button>
+      <button data-rt="popup">弹窗规则</button>
+    </div>
+    <div class="sub"><textarea id="ta-rule" spellcheck="false" aria-label="规则内容"></textarea></div>
+    <details class="fold" id="pop-help" hidden><summary><div class="txt"><b>弹窗规则写法</b></div></summary>
+      <dl class="syntax">
+        <dd>一行一条：<code>类型: 词1, 词2</code>；前面加 <code>@包名</code> 只对那个应用生效，前面加 <code>-</code> 删掉一条内置规则。</dd>
+        <dt>拒绝</dt><dd>弹窗里的拒绝按钮，文字完全相同才点，例：<code>拒绝: 残忍离开</code></dd>
+        <dt>弹窗关闭</dt><dd>只在浮层弹窗里点（页面里的同名按钮不点）</dd>
+        <dt>通知拒绝 / 通知提示</dt><dd>弹窗里有「通知提示」的字时，才点「通知拒绝」的按钮</dd>
+        <dt>不碰</dt><dd>弹窗里有这些字就整个不点，例：<code>不碰: 红包</code></dd>
+        <dt>图标</dt><dd>没有文字的关闭图标，资源名包含这些字，例：<code>@com.xx 图标: iv_ad_close</code></dd>
+        <dt>跳过 / 非广告</dt><dd>开屏「跳过」按钮的文字，和不算广告的例外</dd>
+        <dd>例：<code>-拒绝: 我知道了</code> 不再自动点「我知道了」</dd>
+      </dl>
+    </details>
+    <details class="fold" id="pop-builtin" hidden><summary><div class="txt"><b>查看内置规则</b></div></summary><pre id="pop-builtin-txt">读取中…</pre></details>
+    <div class="field end"><span class="result" id="rule-hint">一行一条，保存后几秒内生效</span><button class="btn primary" id="b-rule-save">保存</button></div>
+  </div>
+  <p class="hint">也可以用文件管理器编辑 /data/adb/afa/rules/ 里的 sni.txt、dns.txt、ip.txt、allow.txt、popup.txt，保存后自动生效。</p>
+
+  <h2>规则订阅</h2>
+  <div class="sheet">
+    <div class="sub"><textarea id="ta-subs" spellcheck="false" placeholder="订阅地址，一行一个（https://…）。内容格式和「导入规则」一样"></textarea></div>
+    <div class="field end"><span class="result" id="sub-state">还没有更新过</span><button class="btn" id="b-sub-save">保存地址</button><button class="btn primary" id="b-sub-up">立即更新</button></div>
+    <label class="row"><div class="txt"><b>自动更新订阅</b><span>每 24 小时检查一次</span></div>
+      <span class="sw"><input type="checkbox" data-key="SUB_AUTO"><u></u></span></label>
+  </div>
+</section>
+
+<!-- ======================= 更多 ======================= -->
+<section class="page" id="p-more">
+  <div class="page-title">更多</div>
+
+  <h2>日志</h2>
+  <div class="sheet">
+    <div class="tabs" role="tablist">
+      <button class="on" data-log="check">自检</button>
+      <button data-log="module">模块</button>
+      <button data-log="agh">AdGuard</button>
+    </div>
+    <pre id="log">点上面的标签查看。「自检」会现场检查一遍并自动修复。</pre>
+  </div>
+
+  <h2>AdGuard 后台密码</h2>
+  <div class="sheet">
+    <div class="field">
+      <input type="password" id="pw" placeholder="新密码（账号仍是 root）" autocomplete="new-password">
+      <button class="btn" id="b-pw">修改</button>
+    </div>
+  </div>
+
+  <h2>文件位置</h2>
+  <div class="sheet">
+    <div class="row"><div class="txt"><b>设置与数据</b><span>/data/adb/afa（更新模块时保留，卸载时删除）</span></div></div>
+    <div class="row"><div class="txt"><b>我的规则</b><span>/data/adb/afa/rules/</span></div></div>
+    <div class="row"><div class="txt"><b>开屏跳过名单</b><span>/data/adb/afa/skip_apps.list</span></div></div>
+  </div>
+  <p class="hint">临时停用全部功能：在管理器里关闭本模块的开关，立即生效；打开开关立即恢复。</p>
+</section>
+
+</main>
+
+<div class="savebar" id="savebar"><span>设置已修改</span><button class="btn ghost" id="b-undo">撤销</button><button class="btn" id="b-save">保存并应用</button></div>
+<div class="toast" id="toast" role="status"></div>
+
+<nav aria-label="页面">
+  <div>
+    <button class="on" data-tab="home"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>概览</button>
+    <button data-tab="block"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M6 6l12 12"/></svg>拦截</button>
+    <button data-tab="skip" id="nav-skip"><svg viewBox="0 0 24 24"><rect x="6" y="2.8" width="12" height="18.4" rx="2.6"/><path d="M10 9.5l3.5 2.5-3.5 2.5"/><path d="M14.5 9.5v5"/></svg>开屏</button>
+    <button data-tab="rules"><svg viewBox="0 0 24 24"><path d="M5 6h14M5 12h14M5 18h9"/></svg>规则</button>
+    <button data-tab="more"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/></svg>更多</button>
+  </div>
+</nav>
+
+<script src="bcrypt.js"></script>
+<script>
+(() => {
+  const SH = "sh /data/adb/modules/anti_fraud_ads/mod/webui.sh";
+  const api = (typeof ksu !== "undefined" && ksu.exec) ? ksu : (typeof ap !== "undefined" && ap.exec) ? ap : null;
+  let seq = 0;
+  const exec = (cmd) => new Promise((res) => {
+    if (!api) return res({ code: -1, out: "" });
+    const cb = "_afa" + (seq++);
+    window[cb] = (code, out) => { delete window[cb]; res({ code: code || 0, out: (out || "").replace(/\r/g, "") }); };
+    try { api.exec(cmd, "{}", cb); } catch (e) { delete window[cb]; res({ code: -1, out: "" }); }
+  });
+  const b64 = (s) => btoa(unescape(encodeURIComponent(s)));
+  const $ = (id) => document.getElementById(id);
+  const $$ = (sel) => [...document.querySelectorAll(sel)];
+  const kv = (out) => {
+    const o = { pkg: [], frz: [], sus: [] };
+    out.split("\n").forEach((l) => {
+      const i = l.indexOf("="); if (i < 0) return;
+      const k = l.slice(0, i), v = l.slice(i + 1);
+      Array.isArray(o[k]) ? o[k].push(v.split("|")) : (o[k] = v);
+    });
+    return o;
+  };
+  let tt;
+  const toast = (m) => { const t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(tt); tt = setTimeout(() => t.classList.remove("show"), 2600); };
+  const busy = async (el, fn) => { el.classList.add("busy"); try { await fn(); } finally { el.classList.remove("busy"); } };
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  // ---------------- 页面切换 ----------------
+  const opened = {};
+  function go(tab) {
+    if (!$("p-" + tab)) tab = "home";
+    $$("nav [data-tab]").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
+    $$(".page").forEach((p) => p.classList.toggle("on", p.id === "p-" + tab));
+    window.scrollTo(0, 0);
+    try { sessionStorage.setItem("afa-tab", tab); } catch (e) {}
+    if (opened[tab]) return;
+    opened[tab] = true;
+    if (tab === "skip") { loadApps(); skipLog(); }
+    if (tab === "rules") { loadRule(); loadSubs(); }
+  }
+  $$("nav [data-tab]").forEach((b) => (b.onclick = () => go(b.dataset.tab)));
+  $$("[data-go]").forEach((b) => (b.onclick = () => { go(b.dataset.go); if (b.dataset.rtGo) pickRule(b.dataset.rtGo); }));
+
+  // ---------------- 状态 ----------------
+  let paused = false, conf = {};
+  const PKG_ST = { blocked: ["已断网", "ok"], open: ["未拦截", "warn"], shared: ["共享 UID，跳过", "amber"], missing: ["未安装", ""] };
+  const FRZ_ST = { frozen: ["已冻结", "ok"], active: ["未冻结", "warn"], missing: ["不存在", ""] };
+  const SK_ENV = {
+    nolib: ["这个安装包不含开屏跳过组件", "当前刷入的版本没有 Zygisk 库。刷入 GitHub 编译出来的版本即可，其他设置都会保留。"],
+    nozygisk: ["没有检测到 Zygisk Next", "开屏跳过依赖 Zygisk Next。请在管理器里确认它已安装并启用，然后重启手机。"],
+  };
+
+  function listRows(el, items, map) {
+    el.innerHTML = "";
+    items.forEach(([name, a, b]) => {
+      const s = map[b ?? a] || ["?", ""];
+      const r = document.createElement("div"); r.className = "row";
+      r.innerHTML = `<div class="txt pkg"></div><span class="tag ${s[1]}"></span>`;
+      r.firstChild.textContent = name; r.lastChild.textContent = s[0];
+      el.appendChild(r);
+    });
+  }
+  const SUS_BASE = {};
+  function susNote(id, pkgs, s) {
+    SUS_BASE[id] ??= $(id).textContent;
+    const m = s.sus.filter((x) => pkgs.includes(x[0]) && x[1] !== "missing");
+    const note = !m.length ? "（本机没有这个组件）" : m.every((x) => x[1] === "suspended") ? "（已挂起）" : "（未挂起）";
+    $(id).textContent = SUS_BASE[id] + note;
+  }
+
+  async function status() {
+    const s = kv((await exec(`${SH} status`)).out);
+    if (!api) { $("headline").textContent = "请在 KernelSU / SukiSU 管理器里打开"; return; }
+    $("ver").textContent = `模块 ${s.version || "?"}　AdGuard ${s.agh_version || "?"}`;
+    const ad = s.agh === "1" && s.dns === "1", af = +s.rules > 0;
+    paused = s.agh !== "1" && !af;
+    $("b-pause").textContent = paused ? "恢复全部" : "暂停全部";
+    $("b-pause").classList.toggle("danger", !paused);
+
+    $("lamp-ad").className = "lamp " + (ad ? "on" : "bad");
+    $("lamp-af").className = "lamp " + (af ? "on" : "bad");
+    $("lamp-ad-t").textContent = ad ? "DNS 已接管" : s.agh === "1" ? "DNS 未接管" : "未运行";
+    $("lamp-af-t").textContent = af ? `${s.rules} 条规则` : "未生效";
+
+    const skOn = conf.ENABLE_SKIP === "1", skN = +s.skip_apps || 0, env = SK_ENV[s.skip_env];
+    const sk = $("lamp-sk"), skT = $("lamp-sk-t"), bn = $("sk-banner");
+    if (env) { sk.className = "lamp bad"; skT.textContent = s.skip_env === "nolib" ? "未安装" : "缺少 Zygisk"; }
+    else if (!skOn) { sk.className = "lamp idle"; skT.textContent = "已关闭"; }
+    else if (!skN) { sk.className = "lamp idle"; skT.textContent = "未选应用"; }
+    else { sk.className = "lamp on"; skT.textContent = `${skN} 个应用`; }
+    if (env) { bn.className = "banner bad"; bn.innerHTML = `<b>${env[0]}</b>${env[1]}`; }
+    else if (!skOn) { bn.className = "banner"; bn.innerHTML = "<b>自动跳过已关闭</b>名单会保留，打开开关后保存即可恢复。"; }
+    else { bn.className = "banner ok"; bn.innerHTML = `<b>Zygisk 已就绪</b>${skN ? `正在处理 ${skN} 个应用。` : "在下面选择有开屏广告的应用。"}`; }
+    $("nav-skip").classList.toggle("dot", !!env);
+
+    $("headline").textContent =
+      s.disabled === "1" ? "模块已在管理器中关闭" :
+      paused ? "已暂停，所有拦截都没有生效" :
+      ad && af ? "去广告和反诈拦截都在工作" :
+      !ad && s.agh === "1" ? "AdGuard 在运行，但 DNS 没有接管" :
+      !ad ? "AdGuard 没有运行，去广告不生效" : "反诈规则没有生效";
+    if (s.private_dns === "hostname") toast("私人 DNS 设成了指定服务器，会绕过 AdGuard，建议关闭");
+
+    $("n-sni").textContent = s.sni_hits || "0";
+    $("n-skip").textContent = s.skip_n || "0";
+    $("n-pop").textContent = s.popup_n || "0";
+    $("sni-info").textContent = +s.sni_rules > 0 ? `${s.sni_rules} 个域名，已拦截 ${s.sni_hits || 0} 次连接` : "未启用或内核不支持";
+    const frz = s.frz.filter((x) => x[1] === "frozen").length;
+    const sus = s.sus.filter((x) => x[1] === "suspended").length;
+    $("sys-info").textContent = `冻结 ${frz} 个，挂起 ${sus} 个`;
+    listRows($("pkg-list"), s.pkg, PKG_ST);
+    listRows($("frz-list"), s.frz, FRZ_ST);
+    susNote("sus-quick", ["com.oppo.instant.local.service", "com.nearme.instant.card"], s);
+    susNote("sus-pic", ["com.heytap.pictorial"], s);
+  }
+
+  // ---------------- 设置（底部保存栏） ----------------
+  let loaded = "";
+  const nums = {};
+  const clampNum = (el, v) => Math.min(+el.dataset.max, Math.max(+el.dataset.min, parseInt(v, 10) || +el.dataset.def));
+  function setNum(el, v) {
+    const n = clampNum(el, v);
+    nums[el.dataset.num] = n;
+    el.querySelector("input").value = n;
+  }
+  $$("[data-num]").forEach((el) => {
+    const [minus, plus] = el.querySelectorAll("button");
+    const inp = el.querySelector("input");
+    minus.onclick = () => { setNum(el, nums[el.dataset.num] - 1); dirty(); };
+    plus.onclick = () => { setNum(el, nums[el.dataset.num] + 1); dirty(); };
+    inp.addEventListener("change", () => { setNum(el, inp.value); dirty(); });
+    inp.addEventListener("input", () => { if (inp.value !== "") { nums[el.dataset.num] = clampNum(el, inp.value); dirty(); } });
+  });
+  const syncRows = () => {
+    $("row-popw").classList.toggle("off", !$$("[data-key=POPUP_DISMISS]")[0].checked);
+    $("row-skipw").classList.toggle("off", !$$("[data-key=ENABLE_SKIP]")[0].checked);
+  };
+
+  async function loadConf() {
+    conf = kv((await exec(`${SH} getconf`)).out);
+    $$("[data-key]").forEach((i) => (i.checked = conf[i.dataset.key] === "1"));
+    $("ta-pkgs").value = (conf.BLOCK_PKGS || "").trim().split(/\s+/).filter(Boolean).join("\n");
+    $("ta-frz").value = (conf.DISABLE_PKGS || "").trim().split(/\s+/).filter(Boolean).join("\n");
+    $$("[data-num]").forEach((el) => setNum(el, conf[el.dataset.num]));
+    syncRows();
+    loaded = snapshot(); dirty();
+  }
+  const snapshot = () => JSON.stringify($$("[data-key]").map((i) => i.checked).concat([$("ta-pkgs").value, $("ta-frz").value, nums]));
+  const dirty = () => $("savebar").classList.toggle("show", snapshot() !== loaded);
+  $$("[data-key]").forEach((i) => i.addEventListener("change", () => { syncRows(); dirty(); }));
+  ["ta-pkgs", "ta-frz"].forEach((id) => $(id).addEventListener("input", dirty));
+
+  const words = (id) => $(id).value.split(/[\s,，]+/).map((w) => w.trim()).filter((w) => /^[A-Za-z0-9._-]+$/.test(w));
+
+  $("b-undo").onclick = () => loadConf();
+  $("b-save").onclick = () => busy($("savebar"), async () => {
+    const lines = ["# 由设置页生成，也可以手动编辑"];
+    $$("[data-key]").forEach((i) => lines.push(`${i.dataset.key}=${i.checked ? 1 : 0}`));
+    Object.keys(nums).forEach((k) => lines.push(`${k}=${nums[k]}`));
+    lines.push(`BLOCK_PKGS="${words("ta-pkgs").join(" ")}"`, `DISABLE_PKGS="${words("ta-frz").join(" ")}"`);
+    const r = await exec(`${SH} save ${b64(lines.join("\n") + "\n")}`);
+    if (!r.out.includes("ok")) return toast("保存失败");
+    toast("已保存，正在应用…");
+    await exec(`${SH} apply`);
+    await loadConf(); await status();
+    toast("已保存并应用");
+  });
+
+  $("b-open").onclick = () => exec(`${SH} open`);
+  $("b-refresh").onclick = () => busy(document.body, async () => { await status(); await stats(); });
+  $("b-pause").onclick = () => busy(document.body, async () => {
+    toast(paused ? "正在恢复，AdGuard 启动需要几秒…" : "正在暂停…");
+    await exec(`${SH} ${paused ? "resume" : "pause"}`);
+    await status();
+  });
+
+  $("b-test").onclick = () => busy($("b-test"), async () => {
+    const d = $("t-domain").value.trim();
+    const r = (await exec(`${SH} test ${b64(d)}`)).out.trim().split("|");
+    const el = $("t-result");
+    el.className = "result " + (r[0] === "blocked" ? "ok" : r[0] === "open" ? "warn" : "");
+    el.textContent = r[1] || r[0] || "没有结果";
+    if (r[0] === "open") el.textContent += "（SNI 拦截仍可能在连接时断开它，见下方拦截次数）";
+    status();
+  });
+
+  // ---------------- 开屏：应用名单 ----------------
+  let apps = [], picked = new Set(), filter = "all", shown = 60, saveT;
+  const hasInfo = typeof ksu !== "undefined" && typeof ksu.getPackagesInfo === "function";
+
+  // 常见应用的中文名（管理器不提供应用名时用）。REC 里的是已知有开屏广告 / 启动弹窗的应用，「推荐」和「一键添加推荐」用它；
+  // 不收录支付、银行、证券类，免得误点到重要弹窗
+  const REC_GROUPS = {
+    "视频与直播": {"tv.danmaku.bili": "哔哩哔哩", "com.youku.phone": "优酷", "com.qiyi.video": "爱奇艺", "com.tencent.qqlive": "腾讯视频", "com.hunantv.imgo.activity": "芒果TV", "com.sohu.sohuvideo": "搜狐视频", "com.pplive.androidphone": "PP视频", "com.ss.android.article.video": "西瓜视频", "com.baidu.haokan": "好看视频", "com.tencent.weishi": "微视", "com.smile.gifmaker": "快手", "com.kuaishou.nebula": "快手极速版", "com.ss.android.ugc.aweme.lite": "抖音极速版", "com.ss.android.ugc.live": "抖音火山版", "com.duowan.kiwi": "虎牙直播", "air.tv.douyu.android": "斗鱼", "com.qq.ac.android": "腾讯动漫", "com.kuaikan.comic": "快看漫画"},
+    "音乐与听书": {"com.netease.cloudmusic": "网易云音乐", "com.tencent.qqmusic": "QQ音乐", "com.kugou.android": "酷狗音乐", "cn.kuwo.player": "酷我音乐", "com.ximalaya.ting.android": "喜马拉雅", "com.tencent.karaoke": "全民K歌", "com.changba": "唱吧", "com.xs.fm": "番茄畅听"},
+    "新闻资讯与社区": {"com.ss.android.article.news": "今日头条", "com.ss.android.article.lite": "今日头条极速版", "com.tencent.news": "腾讯新闻", "com.netease.newsreader.activity": "网易新闻", "com.sohu.newsclient": "搜狐新闻", "com.ifeng.news2": "凤凰新闻", "com.jifen.qukan": "趣头条", "com.tencent.reading": "天天快报", "com.baidu.searchbox": "百度", "com.baidu.searchbox.lite": "百度极速版", "com.baidu.tieba": "百度贴吧", "com.sina.weibo": "微博", "com.zhihu.android": "知乎", "com.xingin.xhs": "小红书", "com.douban.frodo": "豆瓣", "com.hupu.games": "虎扑", "com.coolapk.market": "酷安"},
+    "小说与阅读": {"com.dragon.read": "番茄小说", "com.kmxs.reader": "七猫免费小说", "com.qq.reader": "QQ阅读", "com.shuqi.controller": "书旗小说", "com.qidian.QDReader": "起点读书", "com.chaozh.iReaderFree": "掌阅"},
+    "购物与生活": {"com.taobao.taobao": "淘宝", "com.tmall.wireless": "天猫", "com.taobao.litetao": "淘特", "com.alibaba.wireless": "阿里巴巴1688", "com.taobao.idlefish": "闲鱼", "com.jingdong.app.mall": "京东", "com.jd.jdlite": "京东极速版", "com.xunmeng.pinduoduo": "拼多多", "com.achievo.vipshop": "唯品会", "com.suning.mobile.ebuy": "苏宁易购", "com.wuba.zhuanzhuan": "转转", "com.sankuai.meituan": "美团", "com.sankuai.meituan.takeoutnew": "美团外卖", "me.ele": "饿了么", "com.dianping.v1": "大众点评", "com.yek.android.kfc.activitys": "肯德基", "com.taobao.movie.android": "淘票票", "com.sankuai.movie": "猫眼", "com.wuba": "58同城", "com.anjuke.android.app": "安居客", "com.lianjia.beike": "贝壳找房", "com.cubic.autohome": "汽车之家"},
+    "出行与地图": {"com.baidu.BaiduMap": "百度地图", "com.autonavi.minimap": "高德地图", "com.tencent.map": "腾讯地图", "ctrip.android.view": "携程旅行", "com.Qunar": "去哪儿旅行", "com.tongcheng.android": "同程旅行", "com.taobao.trip": "飞猪旅行", "com.MobileTicket": "铁路12306", "com.sdu.didi.psnger": "滴滴出行", "com.jingyao.easybike": "哈啰"},
+    "工具（广告重灾区）": {"cn.etouch.ecalendar": "中华万年历", "com.youloft.calendar": "万年历", "com.moji.mjweather": "墨迹天气", "com.icoolme.android.weather": "最美天气", "com.snda.wifilocating": "WiFi万能钥匙", "com.tencent.wifimanager": "腾讯WiFi管家", "com.qihoo.cleandroid_cn": "360清理大师", "com.qihoo360.mobilesafe": "360手机卫士", "com.cleanmaster.mguard_cn": "猎豹清理大师", "com.tencent.qqpimsecure": "腾讯手机管家", "com.qihoo.browser": "360浏览器", "sogou.mobile.explorer": "搜狗浏览器", "com.ijinshan.browser_fast": "猎豹浏览器", "com.UCMobile": "UC浏览器", "com.tencent.mtt": "QQ浏览器", "com.quark.browser": "夸克", "com.baidu.netdisk": "百度网盘", "com.xunlei.downloadprovider": "迅雷", "com.estrongs.android.pop": "ES文件浏览器", "cn.wps.moffice_eng": "WPS Office", "com.youdao.dict": "网易有道词典", "com.kingsoft": "金山词霸", "com.baidu.homework": "作业帮", "com.fenbi.android.solar": "小猿搜题", "com.mt.mtxx.mtxx": "美图秀秀", "com.meitu.meiyancamera": "美颜相机", "com.netease.mail": "网易邮箱大师", "com.tencent.android.qqdownloader": "应用宝", "com.qihoo.appstore": "360手机助手", "com.baidu.appsearch": "百度手机助手", "com.wandoujia.phoenix2": "豌豆荚"},
+    "运营商": {"com.greenpoint.android.mc10086.activity": "中国移动", "com.sinovatech.unicom.ui": "中国联通", "com.ct.client": "中国电信"},
+  };
+  const KNOWN = {"com.ss.android.ugc.aweme": "抖音", "com.tencent.mm": "微信", "com.tencent.mobileqq": "QQ", "com.eg.android.AlipayGphone": "支付宝", "com.tencent.weread": "微信读书", "com.github.android": "GitHub", "com.google.android.youtube": "YouTube", "com.android.chrome": "Chrome", "bin.mt.plus": "MT管理器"};
+  const REC = {};
+  Object.values(REC_GROUPS).forEach((g) => Object.assign(REC, g));
+  Object.assign(KNOWN, REC);
+
+  async function loadApps() {
+    const [all, sel] = await Promise.all([exec(`${SH} apps`), exec(`${SH} skip_get`)]);
+    const installed = all.out.split("\n").map((x) => x.trim()).filter(Boolean);
+    picked = new Set(sel.out.split("\n").map((x) => x.trim()).filter(Boolean));
+    const label = {};
+    if (hasInfo && installed.length) {
+      try {
+        const arr = JSON.parse(ksu.getPackagesInfo(JSON.stringify(installed)));
+        if (Array.isArray(arr)) arr.forEach((x) => { if (x && x.packageName) label[x.packageName] = x.appLabel || ""; });
+      } catch (e) {}
+    }
+    const set = new Set(installed);
+    const pkgs = installed.concat([...picked].filter((p) => !set.has(p)));   // 已卸载但还在名单里的也列出来，方便取消
+    apps = pkgs.map((p) => ({ pkg: p, label: label[p] || KNOWN[p] || "", gone: !set.has(p) }));
+    apps.sort((a, b) => (picked.has(b.pkg) - picked.has(a.pkg)) || (a.label || a.pkg).localeCompare(b.label || b.pkg, "zh"));
+    renderApps();
+  }
+
+  function appRow(a) {
+    const short = a.pkg.split(".").pop() || a.pkg;
+    const name = a.label || short;
+    const letter = esc(name.slice(0, 1).toUpperCase());
+    const icon = hasInfo ? `<img loading="lazy" alt="" src="ksu://icon/${esc(a.pkg)}" data-l="${letter}">` : letter;
+    const rec = REC[a.pkg] && !picked.has(a.pkg) ? '<i class="rec">推荐</i>' : "";
+    return `<label class="app"><span class="ic">${icon}</span><span class="txt"><b>${esc(name)}${rec}</b><span>${esc(a.pkg)}${a.gone ? "（已卸载）" : ""}</span></span>` +
+      `<span class="sw"><input type="checkbox" data-app="${esc(a.pkg)}"${picked.has(a.pkg) ? " checked" : ""}><u></u></span></label>`;
+  }
+
+  const recPending = () => apps.filter((a) => !a.gone && REC[a.pkg] && !picked.has(a.pkg));
+  function updateAppHead() {
+    $("app-h2").textContent = `应用（已选 ${picked.size} 个）`;
+    const n = recPending().length;
+    $("b-common").textContent = n ? `一键添加推荐（${n}）` : "推荐已全部添加";
+    $("b-common").disabled = !n;
+  }
+
+  function renderApps() {
+    const q = $("app-q").value.trim().toLowerCase();
+    const list = apps.filter((a) => (filter === "all" || (filter === "on" ? picked.has(a.pkg) : REC[a.pkg] && !a.gone)) && (!q || a.pkg.toLowerCase().includes(q) || a.label.toLowerCase().includes(q)));
+    updateAppHead();
+    const el = $("app-list");
+    if (!list.length) {
+      el.innerHTML = `<div class="empty">${!apps.length ? "没有读到应用列表" : filter === "on" && !q ? "还没有选择应用。点「一键添加推荐」，或在「全部」里打开开关。" : filter === "rec" && !q ? "没有装推荐名单里的应用" : "没有匹配的应用"}</div>`;
+      return;
+    }
+    const rest = list.length - shown;
+    el.innerHTML = list.slice(0, shown).map(appRow).join("") +
+      (rest > 0 ? `<button class="more-apps" id="b-more-apps">再显示 ${Math.min(60, rest)} 个（还有 ${rest} 个）</button>` : "");
+    el.querySelectorAll("img[data-l]").forEach((img) => (img.onerror = () => { img.replaceWith(document.createTextNode(img.dataset.l)); }));
+    el.querySelectorAll("[data-app]").forEach((i) => (i.onchange = () => {
+      i.checked ? picked.add(i.dataset.app) : picked.delete(i.dataset.app);
+      const tag = i.closest(".app").querySelector(".rec");
+      if (tag && i.checked) tag.remove();
+      updateAppHead();
+      clearTimeout(saveT); saveT = setTimeout(saveApps, 500);
+    }));
+    const more = $("b-more-apps");
+    if (more) more.onclick = () => { shown += 60; renderApps(); };
+  }
+
+  async function saveApps(msg) {
+    const r = (await exec(`${SH} skip_save ${b64([...picked].join("\n") + "\n")}`)).out.trim();
+    toast(r.startsWith("ok") ? (typeof msg === "string" ? msg : "已保存，下次打开该应用时生效") : "保存失败");
+    status();
+  }
+
+  $("app-q").addEventListener("input", () => { shown = 60; renderApps(); });
+  $("b-common").onclick = () => {
+    const add = recPending();
+    if (!add.length) return toast("已安装的常见开屏广告应用都已经选上了");
+    add.forEach((a) => picked.add(a.pkg));
+    apps.sort((a, b) => (picked.has(b.pkg) - picked.has(a.pkg)) || (a.label || a.pkg).localeCompare(b.label || b.pkg, "zh"));
+    renderApps();
+    clearTimeout(saveT);
+    saveApps(`已添加 ${add.length} 个：${add.slice(0, 4).map((a) => a.label).join("、")}${add.length > 4 ? " 等" : ""}`);
+  };
+  $$("[data-f]").forEach((b) => (b.onclick = () => {
+    filter = b.dataset.f; shown = 60;
+    $$("[data-f]").forEach((x) => x.classList.toggle("on", x === b));
+    renderApps();
+  }));
+
+  async function skipLog() {
+    const out = (await exec(`${SH} skip_log`)).out.trim();
+    $("sk-log").textContent = out || "还没有记录。打开一个选中的应用试试（先在最近任务里把它划掉）。";
+    $("sk-log").scrollTop = $("sk-log").scrollHeight;
+  }
+  $("b-sklog").onclick = () => busy($("b-sklog"), skipLog);
+
+  // ---------------- 规则 ----------------
+  async function stats() {
+    const s = kv((await exec(`${SH} stats`)).out);
+    const total = `拦截域名 ${s.sni_total || 0} 个，IP ${s.ip_total || 0} 个，DNS 规则 ${s.dns_total || 0} 条`;
+    $("st-total").textContent = total;
+    $("rule-info").textContent = total;
+    const mine = (+s.user_sni || 0) + (+s.user_dns || 0) + (+s.user_ip || 0) + (+s.user_allow || 0) + (+s.user_popup || 0);
+    $("pop-rules-info").textContent = `生效 ${s.popup_total || 0} 条（我的 ${s.user_popup || 0} 条）。可导入新规则，保存即生效`;
+    $("st-src").textContent = `内置拦截域名 ${s.builtin_sni || 0} 个，我的规则 ${mine} 条，订阅 ${s.sub_total || 0} 条`;
+    $("st-builtin").textContent = (s.builtin_list || "").trim().split(/\s+/).join("、");
+    $("st-allow").textContent = (s.allow_list || "").trim().split(/\s+/).join("、");
+  }
+  let rt = "sni";
+  const RT_HINT = { popup: "拒绝: 残忍离开, 再看看\n@com.example.app 图标: iv_ad_close\n-拒绝: 我知道了", sni: "纯域名，一行一个，自动覆盖子域名", dns: "AdGuard 规则语法，如 ||example.com^", ip: "IPv4 或网段，如 1.2.3.4、1.2.3.0/24", allow: "这些域名永远不拦截" };
+  async function loadRule() {
+    const want = rt;
+    const out = (await exec(`${SH} rules_get ${want}`)).out;
+    if (want !== rt) return;      // 切到别的标签了
+    $("ta-rule").value = out;
+    $("ta-rule").placeholder = RT_HINT[want];
+  }
+  async function pickRule(t) {
+    rt = t;
+    $$("[data-rt]").forEach((x) => x.classList.toggle("on", x.dataset.rt === t));
+    $("pop-help").hidden = $("pop-builtin").hidden = t !== "popup";
+    $("rule-hint").className = "result";
+    $("rule-hint").textContent = t === "popup" ? "保存后，下次打开应用时生效" : "一行一条，保存后几秒内生效";
+    await loadRule();
+  }
+  $$("[data-rt]").forEach((b) => (b.onclick = () => pickRule(b.dataset.rt)));
+  $("pop-builtin").addEventListener("toggle", async () => {
+    if ($("pop-builtin").open) $("pop-builtin-txt").textContent = (await exec(`${SH} popup_builtin`)).out.trim();
+  });
+  $("b-rule-save").onclick = () => busy($("b-rule-save").closest(".sheet"), async () => {
+    const data = b64($("ta-rule").value.trim() + "\n");
+    if (data.length > 100000) return toast("内容太长，请直接编辑 /data/adb/afa/rules/ 里的文件");
+    const r = await exec(`${SH} rules_save ${rt} ${data}`);
+    $("rule-hint").className = "result ok";
+    $("rule-hint").textContent = rt === "popup" ? "已保存，下次打开应用时生效" : "已生效：" + r.out.trim().split("\n").pop();
+    await loadRule(); await stats(); status();
+  });
+  $("b-import").onclick = () => busy($("b-import").closest(".sheet"), async () => {
+    const txt = $("ta-import").value.trim();
+    if (!txt) return toast("先粘贴规则");
+    const data = b64(txt + "\n");
+    if (data.length > 100000) return toast("内容太长，请改用订阅或直接编辑规则文件");
+    const r = (await exec(`${SH} import ${data}`)).out.trim();
+    const names = { sni: "拦截域名", dns: "DNS 规则", ip: "IP", allow: "放行", popup: "弹窗规则" };
+    const parts = r.split(/\s+/).filter((x) => x.includes("+")).map((x) => { const [k, n] = x.split("+"); return `${names[k] || k} +${n}`; });
+    $("imp-result").className = "result " + (parts.length ? "ok" : "");
+    $("imp-result").textContent = parts.length ? "已导入并生效：" + parts.join("，") : "没有新规则（都已存在或格式无法识别）";
+    if (parts.length) $("ta-import").value = "";
+    await loadRule(); await stats(); status();
+  });
+  async function loadSubs() {
+    const lines = (await exec(`${SH} sub_get`)).out.split("\n");
+    $("ta-subs").value = lines.filter((l) => l.startsWith("url=")).map((l) => l.slice(4)).join("\n");
+    const last = lines.find((l) => l.startsWith("last="));
+    if (last) { const [t, m] = last.slice(5).split("|"); $("sub-state").textContent = `上次更新 ${t}：${m}`; }
+  }
+  $("b-sub-save").onclick = () => busy($("b-sub-save").closest(".sheet"), async () => {
+    await exec(`${SH} sub_save ${b64($("ta-subs").value.trim() + "\n")}`);
+    await loadSubs(); toast("订阅地址已保存");
+  });
+  $("b-sub-up").onclick = () => busy($("b-sub-up").closest(".sheet"), async () => {
+    await exec(`${SH} sub_save ${b64($("ta-subs").value.trim() + "\n")}`);
+    $("sub-state").textContent = "正在下载…";
+    const r = (await exec(`${SH} sub_update`)).out.trim();
+    toast(r || "完成");
+    await loadSubs(); await stats(); status();
+  });
+
+  // ---------------- 更多 ----------------
+  $("b-pw").onclick = () => busy($("b-pw"), async () => {
+    const pw = $("pw").value;
+    if (pw.length < 6) return toast("密码至少 6 位");
+    if (!window.bcrypt) return toast("加密组件没有加载");
+    toast("正在加密…");
+    await new Promise((r) => setTimeout(r, 50));
+    const h = window.bcrypt.hashSync(pw, 10);
+    const r = await exec(`${SH} passwd ${b64(h)}`);
+    $("pw").value = "";
+    toast(r.out.includes("ok") ? "密码已修改，账号仍是 root" : (r.out.trim() || "修改失败"));
+  });
+  $$("[data-log]").forEach((b) => (b.onclick = () => busy($("log"), async () => {
+    $$("[data-log]").forEach((x) => x.classList.toggle("on", x === b));
+    $("log").textContent = b.dataset.log === "check" ? "正在自检…" : "读取中…";
+    const r = await exec(`${SH} log ${b.dataset.log}`);
+    $("log").textContent = r.out.trim() || "（空）";
+    $("log").scrollTop = $("log").scrollHeight;
+  })));
+
+  // ---------------- 启动 ----------------
+  (async () => {
+    await loadConf();
+    await status();
+    await stats();
+    let t = "home";
+    try { t = sessionStorage.getItem("afa-tab") || "home"; } catch (e) {}
+    if (t !== "home") go(t);
+  })();
+})();
+</script>
+</body>
+</html>

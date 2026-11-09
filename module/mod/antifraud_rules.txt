@@ -1,0 +1,58 @@
+! 反诈相关域名规则（整理自 去广告(特别版) 1108 的 hosts）
+! 用法：AdGuard Home 网页后台 → 过滤器 → 自定义过滤规则，整段粘贴后保存
+
+! ===== 国家反诈中心
+||gjfzpt.cn^
+||fzapp-test-tyy.gjfzpt.cn^
+||oss.gjfzpt.cn^
+||fzapp.gjfzpt.cn^
+||fzapph5.gjfzpt.cn^
+
+! ===== 反诈相关第三方服务
+||chanct.com^
+||fqzpt.com^
+||fzlm.com^
+||fanzha.org.cn^
+||hicore-auth.com^
+||hei-tong.com^
+||loongteam.com^
+||cert.org.cn^
+||ifcert.cn^
+||ifcert.com^
+||ifcert.org.cn^
+||cnvd.org.cn^
+||anva.org.cn^
+||ics-cert.org.cn^
+||certlab.org^
+||china-bestmind.com^
+||i-bestmind.com^
+||t-bestmind.com^
+||himindtech.com^
+||fhss.com.cn^
+||hailiangyun.cn^
+
+! ===== ColorOS 安全检测 / 云查杀
+||obus-dctech-cn.heytapmobi.com^
+||obus-cn.dc.heytapmobi.com^
+||app-installer-cn.heytapmobi.com^
+||virusinfo-cloudscan-cn.heytapmobi.com^
+
+! ===== 可选：公安部 / 工信部官网（屏蔽后这些政府网站也打不开，需要的话去掉行首的 "! "）
+! ||miit.gov.cn^
+! ||mps.gov.cn^
+! ||beian.miit.gov.cn^
+! ||ywtbapi.mps.gov.cn^
+! ||beian.mps.gov.cn^
+! ||mail.mps.gov.cn^
+! ||ywtb.mps.gov.cn^
+! ||ngo.mps.gov.cn^
+! ||m.mps.gov.cn^
+! ||dbjb.mps.gov.cn^
+! ||ispl.mps.gov.cn^
+! ||ecidewc.mps.gov.cn^
+! ||cyberpolice.mps.gov.cn^
+! ||app.mps.gov.cn^
+! ||zlbj.mps.gov.cn^
+! ||zwfw.mps.gov.cn^
+! ||ecidcwc.mps.gov.cn^
+! ||www.mps.gov.cn^

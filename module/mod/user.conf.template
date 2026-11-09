@@ -1,0 +1,16 @@
+# 用户配置：这里的设置会覆盖模块默认值，更新模块时保留
+# 去掉行首 # 再修改；改完重启，或在管理器里点两次「执行」
+# 全部可用项见 /data/adb/modules/anti_fraud_ads/mod/config.prop
+
+#ENABLE_AGH=1
+#AGH_BLOCK_DOT=1
+#BLOCK_COLOROS_IP=1
+#BLOCK_PKGS="com.coloros.phonemanager com.oplus.appdetail com.coloros.securityguard com.hicorenational.antifraud com.android.packageinstaller"
+#DISABLE_PKGS="com.oplus.thirdkit com.opos.ads"
+#ADS_LOCK=1
+#SUSPEND_QUICKAPP=1
+#SUSPEND_PICTORIAL=0
+#ENABLE_SKIP=1
+#SKIP_WINDOW=8
+#POPUP_DISMISS=1
+#POPUP_WINDOW=7

@@ -1,0 +1,6 @@
+id=anti_fraud_ads
+name=反诈屏蔽+AdGuard去广告（一加 Ace 6 / ColorOS 17）
+version=v7.8
+versionCode=2026110904
+author=改版（AdGuardHome 部分基于 twoone3/AdGuardHomeForRoot）
+description=内置 AdGuard Home（秋风规则）+ 反诈/广告 SDK 多层拦截；挂起快应用等系统广告组件；Zygisk 自动跳过开屏广告；规则热更新。「打开」进设置页，「执行」直达 AdGuard 后台。

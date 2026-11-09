@@ -1,0 +1,36 @@
+# ========== 默认配置（随模块更新覆盖，请不要改这里）==========
+# 想改什么，写到 /data/adb/afa/user.conf 里，那个文件更新模块时会保留
+# 改完重启生效，或在管理器里点两次「执行」（先暂停再恢复）
+
+# ---- AdGuard Home ----
+ENABLE_AGH=1            # 1 = 启用内置 AdGuard Home 去广告
+AGH_BLOCK_IPV6_DNS=1    # 1 = 拒绝 IPv6 DNS，让系统回落到 IPv4，确保都经过 AdGuard
+AGH_BLOCK_DOT=1         # 1 = 拦截 853 端口（DoT），防止系统/应用的加密 DNS 绕过 AdGuard
+BLOCK_QUIC=0            # 1 = 拦截 QUIC（UDP 443），让应用回落到 TCP，SNI 拦截才看得到域名；可能略影响视频加载速度
+AGH_STARTUP_TIMEOUT=120 # 等 AdGuard 监听就绪的最长秒数，超时则不劫持 DNS，保证能上网
+
+# ---- 反诈 ----
+# 按 UID 断网的应用（IPv4+IPv6 全部流量），空格分隔；共享系统 UID（<10000）自动跳过
+BLOCK_PKGS="com.coloros.phonemanager com.oplus.appdetail com.coloros.securityguard com.hicorenational.antifraud com.android.packageinstaller"
+BLOCK_IP_LIST=1         # 1 = DROP 反诈相关 IP（mod/ip_list.txt）
+BLOCK_COLOROS_IP=1      # 1 = DROP ColorOS 云查杀 IP（mod/ip_coloros.txt），误伤时改 0
+BLOCK_SNI=1             # 1 = 按 SNI/Host 直接拦截核心反诈域名（mod/sni_block.txt），不依赖 DNS，开 VPN 也有效
+BLOCK_DNSPOD=1          # 1 = 封锁腾讯 HTTPDNS 119.29.29.29 / 2402:4e00::
+
+# ---- 规则订阅（地址写在 /data/adb/afa/rules/subs.txt，一行一个）----
+SUB_AUTO=1              # 1 = 自动更新订阅
+SUB_INTERVAL=24         # 自动更新间隔（小时）
+
+# ---- 系统广告组件 ----
+DISABLE_PKGS="com.oplus.thirdkit com.opos.ads"   # 冻结的系统包，留空则不冻结
+SUSPEND_QUICKAPP=1      # 1 = 挂起快应用本地服务、快应用卡片（广告里一点就跳的免安装小程序）
+SUSPEND_PICTORIAL=0     # 1 = 挂起锁屏杂志（会连带锁屏杂志壁纸一起停用）
+
+# ---- 开屏广告自动跳过（Zygisk，需要 Zygisk Next）----
+ENABLE_SKIP=1           # 1 = 在「开屏」页选中的应用里，启动后自动点掉「跳过」
+SKIP_WINDOW=8           # 应用打开第一个页面后，在多少秒内找「跳过」（2~30）
+POPUP_DISMISS=1         # 1 = 开屏之后继续检查，关掉应用自己弹的通知权限、活动推广、更新提示等弹窗
+POPUP_WINDOW=7          # 关弹窗再多检查多少秒（1~60）
+
+# ---- 其他 ----
+ADS_LOCK=1              # 1 = 锁定广告缓存目录 / 广告 SDK 数据库
