@@ -1,7 +1,7 @@
-# 给 Muse 的构建说明：anti_fraud_ads v7.8（含开屏跳过）
+# 给 Muse 的构建说明：anti_fraud_ads v7.9（含开屏跳过）
 
 ## 你的任务
-把本目录编译成**一个可直接刷入的 KernelSU 模块 zip**：`anti_fraud_ads_v7.8.zip`。
+把本目录编译成**一个可直接刷入的 KernelSU 模块 zip**：`anti_fraud_ads_v7.9.zip`。
 需要编译的只有「开屏广告自动跳过」的 Zygisk 部分，其余文件（`module/` 里的脚本、设置页、AdGuard Home）**原样打包，不要修改**。
 
 ## 环境要求
@@ -18,7 +18,7 @@
 ```bash
 bash zygisk/build.sh
 ```
-产物：`out/anti_fraud_ads_v7.8.zip`。也可以直接把仓库推到 GitHub，`.github/workflows/build.yml` 会跑同样的脚本。
+产物：`out/anti_fraud_ads_v7.9.zip`。也可以直接把仓库推到 GitHub，`.github/workflows/build.yml` 会跑同样的脚本。
 
 ## build.sh 做了什么（出错时对照排查）
 1. 下载 Zygisk API 头文件到 `build/gen/zygisk.hpp`
@@ -32,10 +32,10 @@ bash zygisk/build.sh
 
 ## 验收（全部通过才算完成）
 ```bash
-Z=out/anti_fraud_ads_v7.8.zip
+Z=out/anti_fraud_ads_v7.9.zip
 unzip -l $Z | grep -E "^.* (module.prop|customize.sh|zygisk/arm64-v8a.so|zygisk/armeabi-v7a.so|agh/AdGuardHome|webroot/index.html)$"
 # 上面应该列出 6 行；module.prop 必须在根目录
-unzip -p $Z module.prop | grep -E "^(id=anti_fraud_ads|version=v7.8)$"     # 应输出 2 行
+unzip -p $Z module.prop | grep -E "^(id=anti_fraud_ads|version=v7.9)$"     # 应输出 2 行
 # 两个 .so 必须导出这两个符号（用 NDK 的 llvm-nm）
 $NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm -D --defined-only build/zygisk/arm64-v8a.so | grep -E "zygisk_(module|companion)_entry"
 # dex 里必须有入口类
@@ -56,7 +56,7 @@ $BUILD_TOOLS/dexdump build/dex/classes.dex | grep "Class descriptor.*Lafa/skip/M
 - 改了什么，最后列成清单（文件、改动、原因）交给用户。
 
 ## 交付
-- `out/anti_fraud_ads_v7.8.zip`（直接给用户刷入）
+- `out/anti_fraud_ads_v7.9.zip`（直接给用户刷入）
 - 改动清单（没改就写「无改动」）
 - 验收命令的输出
 

@@ -164,10 +164,6 @@ button.row.link .txt b { color: var(--lav); }
 .more-apps { display: block; width: 100%; border: 0; background: none; padding: 13px; color: var(--lav); font-weight: 600; cursor: pointer; }
 
 /* ---------- 统计 / 步进器 ---------- */
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.stat { background: var(--sheet); border: 1px solid var(--line); border-radius: 18px; padding: 12px 12px 10px; min-width: 0; }
-.stat b { display: block; font-size: 22px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
-.stat span { display: block; font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .step { display: flex; align-items: center; background: var(--wash); border-radius: 999px; padding: 3px; flex: none; }
 .step button { width: 34px; height: 34px; border: 0; border-radius: 50%; background: var(--sheet); color: var(--lav); font-size: 20px; line-height: 1; cursor: pointer; box-shadow: 0 1px 2px rgba(40, 20, 70, .12); }
 .step button:active { transform: scale(.92); }
@@ -235,13 +231,6 @@ nav button.dot::after { content: ""; position: absolute; top: 11px; left: calc(5
     <button class="btn primary" id="b-open">打开 AdGuard 后台</button>
     <button class="btn" id="b-pause">暂停全部</button>
     <button class="btn" id="b-refresh">刷新</button>
-  </div>
-
-  <h2>开机以来</h2>
-  <div class="stats">
-    <div class="stat"><b id="n-sni">—</b><span>拦截连接</span></div>
-    <div class="stat"><b id="n-skip">—</b><span>跳过开屏</span></div>
-    <div class="stat"><b id="n-pop">—</b><span>关闭弹窗</span></div>
   </div>
 
   <h2>拦截测试</h2>
@@ -355,7 +344,7 @@ nav button.dot::after { content: ""; position: absolute; top: 11px; left: calc(5
   <h2>最近跳过记录</h2>
   <div class="sheet">
     <pre id="sk-log">打开过选中的应用后，这里会显示点掉了什么。</pre>
-    <div class="field end"><span class="result">记录来自系统日志，重启后清空</span><button class="btn small" id="b-sklog">刷新</button></div>
+    <div class="field end"><span class="result">「已启用」说明已经注入应用，「跳过」「关闭弹窗」是实际点掉的</span><button class="btn small" id="b-sklog">刷新</button></div>
   </div>
 </section>
 
@@ -565,10 +554,7 @@ nav button.dot::after { content: ""; position: absolute; top: 11px; left: calc(5
       !ad ? "AdGuard 没有运行，去广告不生效" : "反诈规则没有生效";
     if (s.private_dns === "hostname") toast("私人 DNS 设成了指定服务器，会绕过 AdGuard，建议关闭");
 
-    $("n-sni").textContent = s.sni_hits || "0";
-    $("n-skip").textContent = s.skip_n || "0";
-    $("n-pop").textContent = s.popup_n || "0";
-    $("sni-info").textContent = +s.sni_rules > 0 ? `${s.sni_rules} 个域名，已拦截 ${s.sni_hits || 0} 次连接` : "未启用或内核不支持";
+    $("sni-info").textContent = +s.sni_rules > 0 ? `${s.sni_rules} 个域名生效（DNS 漏掉的连接会在这一层被断开）` : "未启用或内核不支持";
     const frz = s.frz.filter((x) => x[1] === "frozen").length;
     const sus = s.sus.filter((x) => x[1] === "suspended").length;
     $("sys-info").textContent = `冻结 ${frz} 个，挂起 ${sus} 个`;

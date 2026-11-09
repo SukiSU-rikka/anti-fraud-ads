@@ -30,6 +30,13 @@ nohup inotifyd "$MODDIR/mod/inotify.sh" "$MODDIR:d,n" >/dev/null 2>&1 &
 busybox pkill -f "inotifyd $MODDIR/mod/rules.sh" 2>/dev/null
 nohup inotifyd "$MODDIR/mod/rules.sh" "$RULES:w,y,d" >/dev/null 2>&1 &
 
+# 开屏跳过记录：系统日志几分钟就会被别的应用冲掉，开机后把本模块的记录单独存一份
+SKIP_LOG=$PERSIST/skip.log
+[ -f "$SKIP_LOG" ] && [ "$(wc -c < "$SKIP_LOG")" -gt 102400 ] && { tail -n 300 "$SKIP_LOG" > "$SKIP_LOG.tmp"; mv -f "$SKIP_LOG.tmp" "$SKIP_LOG"; }
+[ -f "$PERSIST/.skiplog.pid" ] && kill "$(cat "$PERSIST/.skiplog.pid")" 2>/dev/null
+nohup logcat -v time -s AFA-Skip:I >> "$SKIP_LOG" 2>/dev/null &
+echo $! > "$PERSIST/.skiplog.pid"
+
 # 订阅自动更新：开机 2 分钟后检查一次，之后每 30 分钟检查是否到期
 nohup sh -c "sleep 120; while true; do sh '$MODDIR/mod/rules.sh' sub_auto; sleep 1800; done" >/dev/null 2>&1 &
 

@@ -42,9 +42,6 @@ status)
         echo "sus=$p|$st"
     done
     echo "skip_env=$(skip_env)"
-    lg=$(logcat -d -s AFA-Skip:I 2>/dev/null)
-    echo "skip_n=$(echo "$lg" | grep -cF '跳过「')"
-    echo "popup_n=$(echo "$lg" | grep -cF '关闭弹窗「')"
     echo "skip_apps=$(cat "$SKIP_APPS" 2>/dev/null | grep -cE '^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)+$')"
     ;;
 getconf)
@@ -172,9 +169,10 @@ skip_save)   # $2 = base64(包名列表)
 popup_builtin)
     cat "$MODDIR/mod/popup_rules.txt"
     ;;
-skip_log)    # 最近的跳过记录（Zygisk 库写进 logcat）
-    logcat -d -v time -s AFA-Skip:I AFA-Skip:W 2>/dev/null | grep 'AFA-Skip' | tail -n 40 |
-        sed 's/^\([0-9-]* [0-9:]*\)\.[0-9]* \([IW]\)\/AFA-Skip( *[0-9]*): /\1 /'
+skip_log)    # 最近的跳过记录（service.sh 开机后从系统日志收集到 skip.log）
+    f=$PERSIST/skip.log
+    if [ -s "$f" ]; then cat "$f"; else logcat -d -v time -s AFA-Skip:I 2>/dev/null; fi | grep 'AFA-Skip' | tail -n 40 |
+        sed 's/^\([0-9-]* [0-9:]*\)\.[0-9]* [IW]\/AFA-Skip( *[0-9]*): /\1 /'
     ;;
 open)
     w=$(agh_web); [ -z "$w" ] && w=127.0.0.1:3000

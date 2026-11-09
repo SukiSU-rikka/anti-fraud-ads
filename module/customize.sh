@@ -6,7 +6,7 @@ OLD_AGH_MOD=/data/adb/modules/AdGuardHome
 OLD_AGH_DIR=/data/adb/agh
 
 ui_print "*********************************************"
-ui_print "  反诈屏蔽 + AdGuard 去广告  v7.8"
+ui_print "  反诈屏蔽 + AdGuard 去广告  v7.9"
 ui_print "  一加 Ace 6 / ColorOS 17"
 ui_print "*********************************************"
 [ "$ARCH" = arm64 ] || abort "! 内置 AdGuard 只有 arm64 版本，当前架构 $ARCH 不支持"
